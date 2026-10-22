@@ -65,9 +65,9 @@ The panel token passes through the content script, which means it passes through
 2. **Request (`originForFrame`).** For `get` and `save`, the service worker requires all of the following:
    - `sender.url` is exactly our `frame.html`. This rejects content scripts and other extension pages.
    - The sender is a subframe in a tab and presents that tab's current token.
-   - The token is bound to the **first frame document that redeems it**, so a second copy of `frame.html` can't reuse it.
    - `location.ancestorOrigins` is exactly `[armedOrigin]`, which means the frame is a **direct child of the top-level document**. The browser computes this in the frame's own extension process.
    - The armed top document is still `outermost_frame` and `active` (checked with `webNavigation.getFrame({documentId})`), and its URL origin still equals the armed origin.
+   - Last, the token is bound to the **first frame document that redeems it and passes every check above**, so a second copy of `frame.html` can't reuse it, and a frame that is going to be rejected can't use the token up.
 3. Only then does it read or write `cred:<armedOrigin>`.
 
 ### The save flow
@@ -183,6 +183,10 @@ We found this bug at the end of the interview, and it has been fixed since. In [
 5. Close removed only iframe 2, which left iframe 1 broken and impossible to close.
 
 This was a reliability bug, not a security one. The stale frame was rejected, and both tokens were bound to the page's own origin anyway. The fix is an `arming` flag that ignores clicks while an `arm` is in flight. Both `arm` and `disarm` also go through a `send()` helper that catches `sendMessage` failures, so after an extension reload the "Extension context invalidated" error no longer reaches the page console as an uncaught error. An e2e test should cover it: double-click Open and assert that exactly one iframe mounts and loads.
+
+### Token claimed before validation
+
+We found a related ordering bug in `originForFrame` during the same review. The token was bound to the first frame that presented it *before* the `ancestorOrigins` and live-document checks. So a frame that had the token but was going to be rejected, such as `frame.html` nested inside a third-party iframe, still used up the token, and the real panel then failed with "Token already used by another frame". It couldn't leak anything, but it let a frame that would be rejected anyway deny service to the real one. Binding now happens last, only after every other check passes. Because the checks `await`, the panel record is re-read just before binding, so a re-arm in the meantime isn't overwritten with the old token.
 
 ## Known gaps
 

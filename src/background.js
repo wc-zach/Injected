@@ -106,16 +106,7 @@ async function originForFrame(msg, sender) {
     throw new Error('Panel not opened by user for this page');
   }
 
-  // 4. The token is bound to the first frame document that redeems it, so a
-  //    second embedding of frame.html can't reuse it.
-  if (panel.frameDocumentId === null) {
-    panel.frameDocumentId = sender.documentId;
-    await chrome.storage.session.set({ [panelKey(tabId)]: panel });
-  } else if (panel.frameDocumentId !== sender.documentId) {
-    throw new Error('Token already used by another frame');
-  }
-
-  // 5. The frame must sit directly under the top-level document (rejects our
+  // 4. The frame must sit directly under the top-level document (rejects our
   //    frame nested inside a third-party iframe). ancestorOrigins is computed
   //    by the browser in the frame's own (extension) process.
   const ancestors = msg.ancestorOrigins;
@@ -123,7 +114,7 @@ async function originForFrame(msg, sender) {
     throw new Error('Frame must be a direct child of the top document');
   }
 
-  // 6. The armed top-level document must still be the live one (rejects a
+  // 5. The armed top-level document must still be the live one (rejects a
   //    request that lands after the page navigated away).
   const top = await chrome.webNavigation.getFrame({ documentId: panel.documentId }).catch(() => null);
   if (!top || top.frameType !== 'outermost_frame' || top.documentLifecycle !== 'active') {
@@ -131,7 +122,24 @@ async function originForFrame(msg, sender) {
   }
   if (new URL(top.url).origin !== panel.origin) throw new Error('Origin mismatch');
 
-  return panel.origin;
+  // 6. Only a frame that passed every check may claim the token, so a frame
+  //    that is going to be rejected can't burn it for the real panel. The
+  //    token is bound to the first such frame document, so a second embedding
+  //    of frame.html can't reuse it. Re-read the record: a re-arm during the
+  //    awaits above may have replaced it, and writing back the stale copy
+  //    would revive the old token.
+  const current = await getPanel(tabId);
+  if (!current || current.token !== msg.token) {
+    throw new Error('Panel not opened by user for this page');
+  }
+  if (current.frameDocumentId === null) {
+    current.frameDocumentId = sender.documentId;
+    await chrome.storage.session.set({ [panelKey(tabId)]: current });
+  } else if (current.frameDocumentId !== sender.documentId) {
+    throw new Error('Token already used by another frame');
+  }
+
+  return current.origin;
 }
 
 // --- Helpers ----------------------------------------------------------------
