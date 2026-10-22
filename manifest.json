@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Injected Credential Form",
+  "version": "0.1.0",
+  "description": "Saves a synthetic username/password per origin via an isolated extension iframe.",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "webNavigation"],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/frame.html"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
+}
