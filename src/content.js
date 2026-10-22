@@ -37,9 +37,11 @@
   const wrap = shadow.querySelector('.wrap');
   const button = shadow.querySelector('button');
   let frame = null;
+  let arming = false; // an `arm` request is in flight; see NOTES.md "Open button race"
 
   button.addEventListener('click', async (event) => {
     if (!event.isTrusted) return; // only real user clicks may open the panel
+    if (arming) return; // ignore extra clicks until the pending arm settles
 
     if (frame) {
       frame.remove();
@@ -52,7 +54,13 @@
     // Tell the service worker this top-level document opened the panel. It
     // records our browser-verified documentId/origin (the payload carries
     // nothing) and returns a one-time token for the iframe we're about to make.
-    const res = await chrome.runtime.sendMessage({ type: 'arm' });
+    arming = true;
+    let res;
+    try {
+      res = await chrome.runtime.sendMessage({ type: 'arm' });
+    } finally {
+      arming = false;
+    }
     if (!res?.ok) return;
 
     frame = document.createElement('iframe');

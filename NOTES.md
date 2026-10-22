@@ -172,6 +172,18 @@ I used a coding assistant for most of the implementation and as a sounding board
 - **No dependencies or build step.** The surface is about 200 lines, and a framework would add supply-chain risk without much benefit.
 - **Validation.** Strings only, at most 1024 characters, username required. Unknown message types are rejected.
 
+## Open button race (found at the end of the interview)
+
+We found this bug at the end of the interview, and it has been fixed since. In [content.js](src/content.js), the click handler only set `frame` after `await chrome.runtime.sendMessage({ type: 'arm' })` returned. A second click during that wait (a double-click, or a slow service worker wake-up) also saw `frame === null`, so it ran again:
+
+1. Click 1 armed the panel, and the service worker stored token T1.
+2. Click 2 armed it again, and the service worker replaced T1 with T2.
+3. Both calls returned, so two iframes were mounted, but `frame` pointed only at the second.
+4. Iframe 1's `get` carried T1 and failed with "Panel not opened by user for this page".
+5. Close removed only iframe 2, which left iframe 1 broken and impossible to close.
+
+This was a reliability bug, not a security one. The stale frame was rejected, and both tokens were bound to the page's own origin anyway. The fix is an `arming` flag that ignores clicks while an `arm` is in flight. An e2e test should cover it: double-click Open and assert that exactly one iframe mounts and loads.
+
 ## Known gaps
 
 - **UI integrity.** The page owns its DOM, so it can hide, remove, restyle or cover our host element. It can't *read* anything, but it can clickjack or show a fake form next to ours.
