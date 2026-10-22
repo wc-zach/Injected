@@ -39,6 +39,16 @@
   let frame = null;
   let arming = false; // an `arm` request is in flight; see NOTES.md "Open button race"
 
+  // sendMessage throws (synchronously or as a rejection) once the extension has
+  // been reloaded and this script is orphaned; keep that out of the page console.
+  async function send(message) {
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch {
+      return undefined; // e.g. "Extension context invalidated"
+    }
+  }
+
   button.addEventListener('click', async (event) => {
     if (!event.isTrusted) return; // only real user clicks may open the panel
     if (arming) return; // ignore extra clicks until the pending arm settles
@@ -47,7 +57,7 @@
       frame.remove();
       frame = null;
       button.textContent = 'Open';
-      chrome.runtime.sendMessage({ type: 'disarm' });
+      send({ type: 'disarm' });
       return;
     }
 
@@ -55,12 +65,8 @@
     // records our browser-verified documentId/origin (the payload carries
     // nothing) and returns a one-time token for the iframe we're about to make.
     arming = true;
-    let res;
-    try {
-      res = await chrome.runtime.sendMessage({ type: 'arm' });
-    } finally {
-      arming = false;
-    }
+    const res = await send({ type: 'arm' });
+    arming = false;
     if (!res?.ok) return;
 
     frame = document.createElement('iframe');

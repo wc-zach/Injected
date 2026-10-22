@@ -182,7 +182,7 @@ We found this bug at the end of the interview, and it has been fixed since. In [
 4. Iframe 1's `get` carried T1 and failed with "Panel not opened by user for this page".
 5. Close removed only iframe 2, which left iframe 1 broken and impossible to close.
 
-This was a reliability bug, not a security one. The stale frame was rejected, and both tokens were bound to the page's own origin anyway. The fix is an `arming` flag that ignores clicks while an `arm` is in flight. An e2e test should cover it: double-click Open and assert that exactly one iframe mounts and loads.
+This was a reliability bug, not a security one. The stale frame was rejected, and both tokens were bound to the page's own origin anyway. The fix is an `arming` flag that ignores clicks while an `arm` is in flight. Both `arm` and `disarm` also go through a `send()` helper that catches `sendMessage` failures, so after an extension reload the "Extension context invalidated" error no longer reaches the page console as an uncaught error. An e2e test should cover it: double-click Open and assert that exactly one iframe mounts and loads.
 
 ## Known gaps
 
