@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 660" width="1060" height="660" role="img" aria-labelledby="t d">
+  <title id="t">Injected Credential Form architecture</title>
+  <desc id="d">The host page and content.js share the page renderer process. The content script arms the panel with the service worker and mounts an iframe whose frame.html runs in the extension process. Only frame.js and the service worker exchange credentials; only the service worker touches chrome.storage.</desc>
+  <style>
+    :root { --bg:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#8c959f;
+            --untrusted-fill:#fff5f3; --untrusted-stroke:#d9a49b;
+            --trusted-fill:#f3f7ff; --trusted-stroke:#9db4dd;
+            --box:#ffffff; --box-stroke:#afb8c1; --secret:#c2410c; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#6e7681;
+              --untrusted-fill:#2a1714; --untrusted-stroke:#8a4b40;
+              --trusted-fill:#111d33; --trusted-stroke:#3d5f99;
+              --box:#161b22; --box-stroke:#3d444d; --secret:#fb923c; }
+    }
+    text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--fg); font-size: 12px; }
+    .h { font-size: 14px; font-weight: 600; }
+    .h2 { font-size: 13px; font-weight: 600; }
+    .m { fill: var(--muted); font-size: 11.5px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+    .s { fill: var(--secret); }
+    .bg { fill: var(--bg); }
+    .untrusted { fill: var(--untrusted-fill); stroke: var(--untrusted-stroke); stroke-width: 1.5; stroke-dasharray: 6 4; }
+    .trusted { fill: var(--trusted-fill); stroke: var(--trusted-stroke); stroke-width: 1.5; }
+    .box { fill: var(--box); stroke: var(--box-stroke); stroke-width: 1.2; }
+    .btn { fill: #1f2937; stroke: none; }
+    .btn-t { fill: #ffffff; font-weight: 600; }
+    .a { fill: none; stroke: var(--line); stroke-width: 1.6; }
+    .a-s { fill: none; stroke: var(--secret); stroke-width: 2; }
+    .dash { stroke-dasharray: 5 4; }
+    .head { fill: var(--line); }
+    .head-s { fill: var(--secret); }
+  </style>
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="head"/>
+    </marker>
+    <marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="head-s"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1060" height="660"/>
+
+  <!-- Page renderer process (untrusted) -->
+  <rect class="untrusted" x="20" y="20" width="400" height="530" rx="10"/>
+  <text class="h" x="40" y="46">Page renderer process</text>
+  <text class="m" x="40" y="64">page origin · untrusted</text>
+
+  <rect class="box" x="40" y="80" width="360" height="60" rx="6"/>
+  <text class="h2" x="56" y="104">Host page scripts</text>
+  <text class="m" x="56" y="124">Can tamper with the DOM. Can't read the iframe.</text>
+
+  <rect class="box" x="40" y="160" width="360" height="370" rx="6"/>
+  <text class="h2" x="56" y="184">content.js</text>
+  <text class="m" x="56" y="202">isolated world · never sees credentials</text>
+
+  <rect class="box" x="60" y="220" width="320" height="290" rx="6"/>
+  <text class="h2" x="76" y="242">Closed shadow root</text>
+  <text class="mono m" x="76" y="259">&lt;injected-cred-root&gt;</text>
+
+  <rect class="btn" x="80" y="276" width="96" height="34" rx="6"/>
+  <text class="btn-t" x="128" y="297" text-anchor="middle">Open</text>
+  <text class="m" x="190" y="291">checks event.isTrusted</text>
+  <text class="m" x="190" y="306">before arming</text>
+
+  <rect class="box" x="80" y="350" width="280" height="120" rx="6"/>
+  <text class="mono" x="96" y="376">&lt;iframe src="…/frame.html#token"&gt;</text>
+  <text class="m" x="96" y="398">Only the element lives here. Its</text>
+  <text class="m" x="96" y="415">document runs in the extension</text>
+  <text class="m" x="96" y="432">process, cross-origin to the page.</text>
+
+  <!-- Extension process (trusted) -->
+  <rect class="trusted" x="520" y="20" width="300" height="530" rx="10"/>
+  <text class="h" x="540" y="46">Extension process</text>
+  <text class="mono m" x="540" y="64">chrome-extension://&lt;id&gt; · trusted</text>
+
+  <rect class="box" x="540" y="80" width="260" height="150" rx="6"/>
+  <text class="h2" x="556" y="104">background.js (service worker)</text>
+  <text class="m" x="556" y="126">Binds each request to an origin</text>
+  <text class="m" x="556" y="143">from browser-supplied sender</text>
+  <text class="m" x="556" y="160">metadata, never the message.</text>
+  <text class="m" x="556" y="184">Validates input. Only code that</text>
+  <text class="m" x="556" y="201">reads or writes the store.</text>
+
+  <rect class="box" x="540" y="350" width="260" height="140" rx="6"/>
+  <text class="h2" x="556" y="374">frame.html / frame.js</text>
+  <text class="m" x="556" y="396">Username/password form.</text>
+  <text class="m" x="556" y="413">Never names an origin.</text>
+  <text class="m" x="556" y="430">Accepts no postMessage.</text>
+  <text class="s" x="556" y="458" font-size="11.5">Sees plaintext for the</text>
+  <text class="s" x="556" y="474" font-size="11.5">bound origin only.</text>
+
+  <!-- Storage -->
+  <rect class="box" x="850" y="80" width="190" height="70" rx="6"/>
+  <text class="h2" x="864" y="102">storage.session</text>
+  <text class="mono m" x="864" y="121">panel:&lt;tabId&gt;</text>
+  <text class="m" x="864" y="138">token, documentId, origin</text>
+
+  <rect class="box" x="850" y="170" width="190" height="70" rx="6"/>
+  <text class="h2" x="864" y="192">storage.local</text>
+  <text class="mono m" x="864" y="211">cred:&lt;origin&gt;</text>
+  <text class="s" x="864" y="228" font-size="11.5">username, password</text>
+
+  <text class="m" x="850" y="266">Both TRUSTED_CONTEXTS:</text>
+  <text class="m" x="850" y="283">content scripts can't read them.</text>
+
+  <!-- ① arm / ② token -->
+  <text class="m" x="470" y="160" text-anchor="middle">① arm / disarm</text>
+  <text class="m" x="470" y="175" text-anchor="middle">(no payload)</text>
+  <path class="a" d="M400 186 H538" marker-end="url(#ah)"/>
+  <path class="a dash" d="M540 214 H402" marker-end="url(#ah)"/>
+  <text class="m" x="470" y="232" text-anchor="middle">② token</text>
+
+  <!-- ③ iframe hosts frame.html -->
+  <text class="m" x="470" y="400" text-anchor="middle">③ iframe load</text>
+  <path class="a dash" d="M360 410 H538" marker-end="url(#ah)"/>
+  <text class="m" x="470" y="428" text-anchor="middle">site-isolated</text>
+
+  <!-- ④ get/save, ⑤ response -->
+  <path class="a-s" d="M580 348 V232" marker-end="url(#ahs)"/>
+  <path class="a-s" d="M760 232 V348" marker-end="url(#ahs)"/>
+  <text class="s" x="670" y="268" text-anchor="middle">④ get / save ↑</text>
+  <text class="m" x="670" y="285" text-anchor="middle">token, ancestorOrigins,</text>
+  <text class="m" x="670" y="300" text-anchor="middle">+ username, password</text>
+  <text class="s" x="670" y="330" text-anchor="middle">⑤ origin + pair ↓</text>
+
+  <!-- service worker ↔ storage -->
+  <path class="a" d="M802 115 H848" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <path class="a-s" d="M802 205 H848" marker-start="url(#ahs)" marker-end="url(#ahs)"/>
+
+  <!-- Footer notes + legend -->
+  <text class="m" x="20" y="584">Every extension message passes through the browser process, which attaches a MessageSender (origin, documentId, tab, frameId) a renderer can't forge.</text>
+  <text class="m" x="20" y="602">Host page scripts have no channel to the service worker: no externally_connectable, and nothing listens for postMessage.</text>
+
+  <path class="a-s" d="M20 636 H60" marker-end="url(#ahs)"/>
+  <text x="70" y="640">carries plaintext credentials</text>
+  <path class="a" d="M270 636 H310" marker-end="url(#ah)"/>
+  <text x="320" y="640">no credentials</text>
+  <path class="a dash" d="M440 636 H480" marker-end="url(#ah)"/>
+  <text x="490" y="640">token or iframe load</text>
+  <rect class="untrusted" x="650" y="626" width="22" height="16" rx="3"/>
+  <text x="680" y="640">untrusted</text>
+  <rect class="trusted" x="770" y="626" width="22" height="16" rx="3"/>
+  <text x="800" y="640">trusted</text>
+</svg>

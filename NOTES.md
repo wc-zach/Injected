@@ -9,17 +9,7 @@
 
 ## Architecture
 
-```
- Host page (untrusted, page origin, page renderer process)
- └─ content.js (isolated world, same renderer process as the page)
-    └─ <injected-cred-root> closed shadow root
-       ├─ [Open] button
-       └─ <iframe src="chrome-extension://<id>/src/frame.html#<token>">   ← extension origin, extension process
-              frame.js ──sendMessage({get|save, token, ancestorOrigins})──► background.js (service worker)
-                                                                              │ binds request → origin
- content.js ──sendMessage({arm|disarm})  (no payload) ──────────────────────► │ storage.session: panel:<tabId>
-                                                                              └ storage.local:   cred:<origin>
-```
+![Architecture: the host page and content.js share the page renderer process; frame.html and the service worker run in the extension process; only frame.js and the service worker exchange credentials, and only the service worker touches storage.](docs/architecture.svg)
 
 | Component | Trusted? | Responsibility |
 | --- | --- | --- |
